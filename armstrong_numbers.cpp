@@ -4,7 +4,7 @@
 #include <random>
 #include <math.h>
 #include <iostream>
-#define MAX_SIZE INT_MAX
+#define MAX_SIZE 1000000 
 
 using namespace std;
 /*
