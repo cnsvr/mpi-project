@@ -1,3 +1,3 @@
-# MPI
+# MPI Project
 
-* This is a project about mpi.
+* This is a project about MPI.
