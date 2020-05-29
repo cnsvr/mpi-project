@@ -4,6 +4,11 @@
 #include <random>
 #include <math.h>
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <stdlib.h>
+#include <string.h>
+
 #define MAX_SIZE 1000000 
 
 using namespace std;
@@ -100,6 +105,10 @@ int main(int argc, char** argv){
     int local_sum;
     int all_sum;
     MPI_Status   status;
+    vector<int>result;
+    ofstream myfile;
+     MPI_File fh;
+
   /*
     generateAndShuffleArray(array, sizeof(array));
 
@@ -178,22 +187,41 @@ int main(int argc, char** argv){
       
 
       }
-
-      /*
-       for (i = 0; i < array_len; i++)
-      {
-        printf("%d\n",armstrong_numbers[i]);
-      }
-      */
-
+      
       MPI_Recv(&all_sum,1,MPI_INT,numworkers,2, MPI_COMM_WORLD,&status);
 
       printf("MASTER: Sum of all Armstrong numbers = %d\n",all_sum);
 
-      
+      std::sort(armstrong_numbers,armstrong_numbers+array_len);
+      /* 
+    MPI_File_open(MPI_COMM_SELF, "armstrong.txt", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);      // MPI_File_write( fh,&armstrong_numbers, array_len , MPI_INT, &status );
+    MPI_File_set_view(fh, 0, MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
+    MPI_File_write( fh,&armstrong_numbers, array_len, MPI_INT, &status );
+    */
+
+    /* 
+      for (i = 0; i < array_len; i++){
+        if(armstrong_numbers[i] != -1) {
+          MPI_File_set_view(fh, 0, MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
+          MPI_File_write( fh,&armstrong_numbers[i], 1, MPI_INT, &status );
+        }
+      }
+      */
+
+      MPI_File_open(MPI_COMM_SELF, "armstrong.txt",MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh);
+      for (int i=0; i < array_len; i++){
+            char buf[42];
+            //fprintf(f,"%d \n",i);
+            if(armstrong_numbers[i] != -1) {
+              snprintf(buf,42,"%d  ",armstrong_numbers[i]);
+              MPI_File_write(fh,buf,strlen(buf), MPI_CHAR,&status);
+            }
+        }
+        //        fclose(f);
+        MPI_File_close(&fh);
+         
+
     }
-
-
     if (my_rank > 0)
     {
 
@@ -252,7 +280,7 @@ int main(int argc, char** argv){
 
     }
 
-
+    MPI_File_close( &fh );
     MPI_Finalize();
 
 
