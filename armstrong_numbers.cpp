@@ -1,3 +1,10 @@
+/*
+Student Name: Furkan Cansever
+Student Number: 2016400349
+Compile Status: Compiling
+Program Status: Working
+*/
+
 #include <stdio.h>
 #include <algorithm>
 #include <mpi.h>
@@ -12,11 +19,8 @@
 #define MAX_SIZE 1000000 
 
 using namespace std;
-/*
-MPI_Send(void* message, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm, communicator);
-MPI_Recv(void* data, int count, MPI_Datatype datatype, int from, int tag, MPI_Comm comm, MPI_Status* status);
-*/
 
+// It generates an array contains numbers from 1 to len and shuffles array.
 void generateAndShuffleArray(int a[],int len){
   int i;
   unsigned seed = 0;
@@ -30,6 +34,7 @@ void generateAndShuffleArray(int a[],int len){
   std::shuffle(a,a+len,g);
 }
 
+// Returns true if given num is Armstrong number, otherwise false.
 bool checkArmstrongNumber (int num) {
   int originalNum;
   int remainder;
@@ -60,6 +65,10 @@ bool checkArmstrongNumber (int num) {
     return false;
 }
 
+/*
+  Finds Armstrong numbers and returns sum of these numbers.
+  If element of array is not Armstrong number, changes value as -1.
+*/
 int findArmstrongNumbers(int a[],int index,int subsize) {
   int i;
   int sum = 0;
@@ -80,54 +89,35 @@ int findArmstrongNumbers(int a[],int index,int subsize) {
 
 
 int main(int argc, char** argv){
-    int my_rank;
-    int rank;
-    int num_proc;
-    int arraymsg = 1;    /* setting a message type */
-   	int indexmsg = 2; 
-    int numworkers;
-    int array_len;
-    int index;
-    int quotient;
-    int prev_sum;
-    int source;
-    int i;
-    int rem;
-    int rc;
-    int chunksize;
-    int sub_start;
-    int sub_len;
-    int sub_size;
-    int count;
-    int array[MAX_SIZE];
-    int temp_array[MAX_SIZE];
-    int armstrong_numbers[MAX_SIZE];
-    int local_sum;
-    int all_sum;
+    int my_rank;               // identifier of processors
+    int num_proc;            // total number of processors
+    int arraymsg = 1;    // setting a message type for array.
+   	int indexmsg = 2;   // setting a message type for index.
+    int summsg = 3;   // setting a message type for sum.
+    int numworkers; // number of worker processors  
+    int array_len;  // array length of array.
+    int index;   // index into the array.
+    int prev_sum;  // local sum of previous processors.
+    int source;  // origin task id of processors
+     int dest; // destination task id to send message
+    int i;  // loop variable
+    int rc;  // return error code
+    int chunksize; // for partitioning the array
+    int array[MAX_SIZE]; // initial array
+    int armstrong_numbers[MAX_SIZE]; // armstrong_numbers array
+    int local_sum; // sum of armstrong_numbers of each processor
+    int all_sum;   // sum of all numbers in armstrong_numbers array.
+       MPI_File fh;  // MPI File object to write armstrong numbers.
     MPI_Status   status;
-    vector<int>result;
-    ofstream myfile;
-     MPI_File fh;
-
-  /*
-    generateAndShuffleArray(array, sizeof(array));
-
-    for (size_t i = 0; i < 10; i++)
-    {
-      printf("%d\n", array[i]);
-    }
-    */
+  
+    // Initialize the MPI environment.
     rc = MPI_Init(&argc,&argv);
      
-   /*--------------------------------------------*/
-  /*  Determine size of the global communicator */
- /*--------------------------------------------*/
+    //  Determine size of the global communicator 
    rc|= MPI_Comm_size(MPI_COMM_WORLD,&num_proc);
 
 
-   /*--------------------------------------------*/
-  /*  Determine rank in the global communicator */
- /*--------------------------------------------*/
+    //  Determine rank in the global communicator 
    rc|= MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
 
    if (rc != 0)
@@ -140,27 +130,23 @@ int main(int argc, char** argv){
     /* MASTER PROCESS */
     if (my_rank == 0) {
         
-      numworkers = num_proc - 1;
+      double start = MPI_Wtime();
 
+      // Generate and shuffle array.
       generateAndShuffleArray(array,array_len);
 
       index = 0;
-      // Send data to processors
-
-      for (rank = 1; rank <= numworkers; rank++)
+      // Send each worker task its portion of the array.
+     for (dest = 1; dest <= numworkers; dest++)
       {
-        // printf("Sending to worker task %d\n",rank);
+  
         fflush(stdout);
-        
-       MPI_Send(&index, 1, MPI_INT, rank, indexmsg, MPI_COMM_WORLD);
+              
+      // Send index value so that each processor knows where to start in the data array.
+     MPI_Send(&index, 1, MPI_INT, dest, indexmsg, MPI_COMM_WORLD);
 
-    /*-----------------------------------------------------------*/
-   /* Send each process a chunksize bit of data starting at the */
-  /* index position.                                           */
- /*-----------------------------------------------------------*/
-
-         MPI_Send(&array[index], chunksize, MPI_INT, rank, arraymsg,
-                  MPI_COMM_WORLD);
+      // Send each process a chunksize bit of data starting at the  index position.
+      MPI_Send(&array[index], chunksize, MPI_INT, dest, arraymsg, MPI_COMM_WORLD);
          index = index + chunksize;
       }
 
@@ -168,17 +154,15 @@ int main(int argc, char** argv){
       {
          source = i;
 
-    /*-----------------------------------------------------------*/
-   /* Receive index value so that master knows which portion of */
-  /* the results array the following data will be stored in.   */
- /*-----------------------------------------------------------*/
-
+        /*
+      Receive index value so that master knows which portion of 
+      the armstrong array the following data will be stored in. 
+      */
          MPI_Recv(&index, 1, MPI_INT, source, indexmsg, MPI_COMM_WORLD,
                   &status);
 
-   /*----------------------------------------*/
-  /* Receive chunksize of the results array */
- /*----------------------------------------*/
+
+              // Receive chunksize of the results array
 
          MPI_Recv(&armstrong_numbers[index], chunksize, MPI_INT, source, arraymsg,
                   MPI_COMM_WORLD, &status);
@@ -187,26 +171,19 @@ int main(int argc, char** argv){
       
 
       }
-      
-      MPI_Recv(&all_sum,1,MPI_INT,numworkers,2, MPI_COMM_WORLD,&status);
+            // Receive sum of all armstrong_numbers from last numworkers processor.
+
+      MPI_Recv(&all_sum,1,MPI_INT,numworkers,summsg, MPI_COMM_WORLD,&status);
 
       printf("MASTER: Sum of all Armstrong numbers = %d\n",all_sum);
+          
+          
+      // Sort armstrong_numbers array.
 
       std::sort(armstrong_numbers,armstrong_numbers+array_len);
-      /* 
-    MPI_File_open(MPI_COMM_SELF, "armstrong.txt", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);      // MPI_File_write( fh,&armstrong_numbers, array_len , MPI_INT, &status );
-    MPI_File_set_view(fh, 0, MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
-    MPI_File_write( fh,&armstrong_numbers, array_len, MPI_INT, &status );
-    */
-
-    /* 
-      for (i = 0; i < array_len; i++){
-        if(armstrong_numbers[i] != -1) {
-          MPI_File_set_view(fh, 0, MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
-          MPI_File_write( fh,&armstrong_numbers[i], 1, MPI_INT, &status );
-        }
-      }
-      */
+            
+            
+            // Writes armstrong numbers to armstrong.txt file.
 
       MPI_File_open(MPI_COMM_SELF, "armstrong.txt",MPI_MODE_CREATE | MPI_MODE_WRONLY,MPI_INFO_NULL,&fh);
       for (int i=0; i < array_len; i++){
@@ -217,8 +194,11 @@ int main(int argc, char** argv){
               MPI_File_write(fh,buf,strlen(buf), MPI_CHAR,&status);
             }
         }
-        //        fclose(f);
         MPI_File_close(&fh);
+
+        double end = MPI_Wtime();
+
+        std::cout << "The process " << my_rank<< " took " << end - start << " seconds to run." << std::endl;
          
 
     }
@@ -227,34 +207,33 @@ int main(int argc, char** argv){
 
         /* WORKER PROCESSORS */
       
+      double start = MPI_Wtime();
+
       source = 0;
-      // Recieve subarray from master and find armstrong_numbers to be sent to MASTER.
+       // Receives index of subarray from master and find armstrong_numbers to be sent to MASTER.
 
      MPI_Recv(&index, 1, MPI_INT, source, indexmsg, MPI_COMM_WORLD,
                &status);
-
-   /*-------------------------------------------------*/
-  /* Receive chunksize bit of data starting at index */
- /*-------------------------------------------------*/
+        
+        
+        // Receives subarray from master and find armstrong_numbers to be sent to MASTER.
 
       MPI_Recv(&armstrong_numbers[index], chunksize, MPI_INT, source, arraymsg,
                MPI_COMM_WORLD, &status);
 
 
-      // Find armstrong_numbers
+      // Find armstrong_numbers and sum of armstrong number of current processor.
       local_sum = findArmstrongNumbers(armstrong_numbers,index,chunksize);
 
       printf("Sum of Armstrong numbers in Process %d = %d\n",my_rank,local_sum);
 
       
 
-      // Send armstrong_numbers to MASTER
+      // Send index of armstrong_numbers array to MASTER
 
       MPI_Send(&index, 1, MPI_INT, 0, indexmsg, MPI_COMM_WORLD);
 
-   /*-----------------------------------------------*/
-  /* Send chunksize bit of results back to master  */
- /*-----------------------------------------------*/
+         // Send armstrong_numbers array to MASTER
 
       MPI_Send(&armstrong_numbers[index], chunksize, MPI_FLOAT, 0, arraymsg,
                MPI_COMM_WORLD);
@@ -262,22 +241,25 @@ int main(int argc, char** argv){
 
       // Send local_sum to next process 
       if(my_rank == 1) {
-        MPI_Send(&local_sum,1,MPI_INT,my_rank+1,2,MPI_COMM_WORLD);
+        MPI_Send(&local_sum,1,MPI_INT,my_rank+1,summsg,MPI_COMM_WORLD);
       } else {
         // Firstly, recieve from previous processors and add local_sum and send to next_processor.
         if (my_rank != numworkers){
-          MPI_Recv(&prev_sum,1,MPI_INT,my_rank-1,2,MPI_COMM_WORLD,&status);
+          MPI_Recv(&prev_sum,1,MPI_INT,my_rank-1,summsg,MPI_COMM_WORLD,&status);
           int sum = local_sum + prev_sum;
-          MPI_Send(&sum,1,MPI_INT,my_rank+1,2,MPI_COMM_WORLD);
+          MPI_Send(&sum,1,MPI_INT,my_rank+1,summsg,MPI_COMM_WORLD);
         } else {
           // This is last worker process
-          MPI_Recv(&prev_sum,1,MPI_INT,my_rank-1,2,MPI_COMM_WORLD,&status);
+          MPI_Recv(&prev_sum,1,MPI_INT,my_rank-1,summsg,MPI_COMM_WORLD,&status);
           int sum = local_sum + prev_sum;
-          MPI_Send(&sum,1,MPI_INT,0,2,MPI_COMM_WORLD);
+          MPI_Send(&sum,1,MPI_INT,0,summsg,MPI_COMM_WORLD);
         }
 
       }
 
+      double end = MPI_Wtime();
+
+      std::cout << "The processor " <<my_rank << " took " << end - start << " seconds to run." << std::endl;
     }
 
     MPI_File_close( &fh );
