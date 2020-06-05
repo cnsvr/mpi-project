@@ -5,15 +5,15 @@ Compile Status: Compiling
 Program Status: Working
 */
 
-//#include <stdio.h>
-//#include <algorithm>
+#include <stdio.h>
+#include <algorithm>
 #include <mpi.h>
 #include <random>
-//#include <math.h>
+#include <math.h>
 #include <iostream>
-//#include <fstream>
-//#include <stdlib.h>
-//#include <string.h>
+#include <fstream>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_SIZE 1000000
 
@@ -123,7 +123,7 @@ int main(int argc, char** argv){
   /* MASTER PROCESS */
   if (my_rank == 0) {
       
-    // double start = MPI_Wtime();
+    double start = MPI_Wtime();
 
     // Generate and shuffle array.
     generateAndShuffleArray(array,array_len);
@@ -184,7 +184,6 @@ int main(int argc, char** argv){
       for (int i=0; i < array_len; i++)
       {
         char buf[42];
-        //fprintf(f,"%d \n",i);
         if(armstrong_numbers[i] != -1)
         {
           snprintf(buf,42,"%d  ",armstrong_numbers[i]);
@@ -193,9 +192,9 @@ int main(int argc, char** argv){
       }
       MPI_File_close(&fh);
 
-      // double end = MPI_Wtime();
+      double end = MPI_Wtime();
 
-      // std::cout << "The process " << my_rank<< " took " << end - start << " seconds to run." << std::endl;
+      std::cout << "The process MASTER took " << end - start << " seconds to run." << std::endl;
          
     }
     
@@ -204,7 +203,7 @@ int main(int argc, char** argv){
 
       /* WORKER PROCESSORS */
       
-      // double start = MPI_Wtime();
+      double start = MPI_Wtime();
 
       source = 0;
       // Receives index of subarray from master and find armstrong_numbers to be sent to MASTER.
@@ -220,6 +219,8 @@ int main(int argc, char** argv){
       local_sum = findArmstrongNumbers(armstrong_numbers,index,chunksize);
 
       printf("Sum of Armstrong numbers in Process %d = %d\n",my_rank,local_sum);
+
+      printf("Number of tasks in Process %d = %d\n",my_rank,chunksize);
 
       // Send index of armstrong_numbers array to MASTER
 
@@ -250,8 +251,9 @@ int main(int argc, char** argv){
         }
       }
 
-      // double end = MPI_Wtime();
-      // std::cout << "The processor " <<my_rank << " took " << end - start << " seconds to run." << std::endl;
+      double end = MPI_Wtime();
+      std::cout << "The processor " <<my_rank << " took " << end - start << " seconds to run." << std::endl;
+    
     }
 
     MPI_File_close( &fh );
