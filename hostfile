@@ -1,1 +1,1 @@
-MacAir-MacBook-Air.local slots=11
+#LOCAL_HOST_NAME slots=#OFSLOTS
